@@ -23,7 +23,7 @@ import QueryPosts from 'components/data/query-posts';
 import Button from 'components/button';
 import WebPreview from 'components/web-preview';
 import { getSelectedSiteId } from 'state/ui/selectors';
-import { getSiteSlug } from 'state/sites/selectors';
+import { getSiteSlug, isJetpackSite, getSite } from 'state/sites/selectors';
 import { getSitePost, isRequestingSitePost } from 'state/posts/selectors';
 
 class StatsPostDetail extends Component {
@@ -34,6 +34,7 @@ class StatsPostDetail extends Component {
 		translate: PropTypes.func,
 		context: PropTypes.object,
 		siteSlug: PropTypes.string,
+		showViewLink: PropTypes.bool,
 	};
 
 	state = {
@@ -64,7 +65,7 @@ class StatsPostDetail extends Component {
 	}
 
 	render() {
-		const { isRequesting, post, postId, siteId, translate, siteSlug } = this.props;
+		const { isRequesting, post, postId, siteId, translate, siteSlug, showViewLink } = this.props;
 		const postOnRecord = post && post.title !== null;
 		const postUrl = get( post, 'URL' );
 
@@ -85,9 +86,9 @@ class StatsPostDetail extends Component {
 
 				<HeaderCake
 					onClick={ this.goBack }
-					actionIcon="visible"
-					actionText={ translate( 'View Post' ) }
-					actionOnClick={ this.openPreview }
+					actionIcon={ showViewLink ? 'visible' : null }
+					actionText={ showViewLink ? translate( 'View Post' ) : null }
+					actionOnClick={ showViewLink ? this.openPreview : null }
 					>
 					{ title }
 				</HeaderCake>
@@ -133,11 +134,14 @@ class StatsPostDetail extends Component {
 const connectComponent = connect(
 	( state, { postId } ) => {
 		const siteId = getSelectedSiteId( state );
+		const isJetpack = isJetpackSite( state, siteId );
+		const site = getSite( state, siteId );
 
 		return {
 			post: getSitePost( state, siteId, postId ),
 			isRequesting: isRequestingSitePost( state, siteId, postId ),
 			siteSlug: getSiteSlug( state, siteId ),
+			showViewLink: ! isJetpack && site.is_previewable,
 			siteId,
 		};
 	}
