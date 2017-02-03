@@ -26,7 +26,7 @@ import NavTabs from 'components/section-nav/tabs';
 import NavItem from 'components/section-nav/item';
 import Card from 'components/card';
 import { getSelectedSite } from 'state/ui/selectors';
-import { getSiteSlug, isJetpackSite } from 'state/sites/selectors';
+import { getSiteSlug } from 'state/sites/selectors';
 import { getCurrentUserId } from 'state/current-user/selectors';
 import { isUserPaid } from 'state/purchases/selectors';
 import ThanksModal from 'my-sites/themes/thanks-modal';
@@ -42,7 +42,6 @@ import {
 	isThemePurchased,
 	getThemeRequestErrors,
 	getThemeForumUrl,
-	isWpcomTheme as isThemeWpcom,
 } from 'state/themes/selectors';
 import { getBackPath } from 'state/themes/themes-ui/selectors';
 import EmptyContentComponent from 'components/empty-content';
@@ -496,7 +495,7 @@ const ThemeSheet = React.createClass( {
 		const analyticsPath = `/theme/:slug${ section ? '/' + section : '' }${ siteID ? '/:site_id' : '' }`;
 		const analyticsPageTitle = `Themes > Details Sheet${ section ? ' > ' + titlecase( section ) : '' }${ siteID ? ' > Site' : '' }`;
 
-		const { name: themeName, description, currentUserId, isJetpack, siteIdOrWpcom } = this.props;
+		const { name: themeName, description, currentUserId, isWpcomTheme } = this.props;
 		const title = themeName && i18n.translate( '%(themeName)s Theme', {
 			args: { themeName }
 		} );
@@ -520,8 +519,9 @@ const ThemeSheet = React.createClass( {
 
 		return (
 			<Main className="theme__sheet">
-				<QueryTheme themeId={ this.props.id } siteId={ siteIdOrWpcom } />
-				{ isJetpack && <QueryTheme themeId={ this.props.id } siteId="wporg" /> }
+				<QueryTheme themeId={ this.props.id } siteId={ 'wpcom' } />
+				{ ! isWpcomTheme && <QueryTheme themeId={ this.props.id } siteId={ siteID } /> }
+				{ ! isWpcomTheme && <QueryTheme themeId={ this.props.id } siteId="wporg" /> }
 				{ currentUserId && <QueryUserPurchases userId={ currentUserId } /> }
 				{ siteID && <QuerySitePurchases siteId={ siteID } /> }
 				{ siteID && <QuerySitePlans siteId={ siteID } /> }
@@ -587,8 +587,7 @@ const ThemeSheetWithOptions = ( props ) => {
 		isLoggedIn,
 		isPremium,
 		isPurchased,
-		isJetpack,
-		isWpcomTheme,
+		installedOnSite,
 	} = props;
 	const siteId = site ? site.ID : null;
 
@@ -598,7 +597,7 @@ const ThemeSheetWithOptions = ( props ) => {
 		defaultOption = 'signup';
 	} else if ( isActive ) {
 		defaultOption = 'customize';
-	} else if ( isJetpack && isWpcomTheme ) {
+	} else if ( ! installedOnSite ) {
 		defaultOption = 'activateOnJetpack';
 	} else if ( isPremium && ! isPurchased ) {
 		defaultOption = 'purchase';
@@ -620,7 +619,7 @@ const ThemeSheetWithOptions = ( props ) => {
 				'tryAndCustomizeOnJetpack',
 			] }
 			defaultOption={ defaultOption }
-			secondaryOption={ ( isJetpack && isWpcomTheme ) ? 'tryAndCustomizeOnJetpack' : 'tryandcustomize' }
+			secondaryOption={ ( installedOnSite ) ? 'tryAndCustomizeOnJetpack' : 'tryandcustomize' }
 			source="showcase-sheet" />
 	);
 };
@@ -652,9 +651,8 @@ export default connect(
 	( state, { id } ) => {
 		const selectedSite = getSelectedSite( state );
 		const siteSlug = selectedSite ? getSiteSlug( state, selectedSite.ID ) : '';
-		const isJetpack = selectedSite && isJetpackSite( state, selectedSite.ID );
-		const isWpcomTheme = selectedSite ? isThemeWpcom( state, id, selectedSite.ID ) : true;
-		const siteIdOrWpcom = ( isJetpack && ! isWpcomTheme ) ? selectedSite.ID : 'wpcom';
+		const isWpcomTheme = !! getTheme( state, 'wpcom', id );
+		const siteIdOrWpcom = ! isWpcomTheme ? selectedSite.ID : 'wpcom';
 		const backPath = getBackPath( state );
 		const currentUserId = getCurrentUserId( state );
 		const isCurrentUserPaid = isUserPaid( state, currentUserId );
@@ -667,8 +665,6 @@ export default connect(
 			error,
 			selectedSite,
 			siteSlug,
-			isJetpack,
-			siteIdOrWpcom,
 			backPath,
 			currentUserId,
 			isCurrentUserPaid,
@@ -681,6 +677,7 @@ export default connect(
 				hasFeature( state, selectedSite.ID, FEATURE_UNLIMITED_PREMIUM_THEMES )
 			),
 			forumUrl: selectedSite && getThemeForumUrl( state, id, selectedSite.ID ),
+			installedOnSite: selectedSite && getTheme( state, selectedSite.ID, id ),
 		};
 	},
 	{
