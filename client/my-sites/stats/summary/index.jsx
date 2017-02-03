@@ -88,7 +88,7 @@ const StatsSummary = React.createClass( {
 					path="referrers"
 					moduleStrings={ StatsStrings.referrers }
 					period={ this.props.period }
-					query={ query }
+					query={ merge( {}, statsQueryOptions, query ) }
 					statType="statsReferrers"
 					summary />;
 				break;
